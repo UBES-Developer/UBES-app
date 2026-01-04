@@ -104,11 +104,18 @@ export default async function StaffDashboard() {
                             <Progress value={(gradingStats.graded / gradingStats.total) * 100} className="h-2" />
                             <p className="text-xs text-slate-500 mt-2 text-right">46 remaining</p>
                         </div>
-                        <Button variant="outline" className="w-full text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border-dashed" asChild>
-                            <Link href="/dashboard/staff/grading">
-                                Continue Grading <ArrowRight className="ml-1 h-3 w-3" />
-                            </Link>
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" className="flex-1 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border-dashed" asChild>
+                                <Link href="/dashboard/staff/grading">
+                                    Grade <ArrowRight className="ml-1 h-3 w-3" />
+                                </Link>
+                            </Button>
+                            <Button variant="default" className="flex-1 bg-slate-900 text-white hover:bg-slate-800" asChild>
+                                <Link href="/dashboard/staff/assignments/create">
+                                    + Assign
+                                </Link>
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

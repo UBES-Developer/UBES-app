@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, FileText, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 
+import Link from "next/link";
+
 export default function AssignmentsPage() {
-    // Mock Data for now as we focus on fixing the 404
+    // Mock Data linked to new system
     const assignments = [
-        { id: 1, title: 'Engineering Ethics Essay', module: 'ETH101', due: '2025-01-15', status: 'pending', priority: 'high' },
-        { id: 2, title: 'Structural Analysis Report', module: 'CIV202', due: '2025-01-20', status: 'in_progress', priority: 'medium' },
-        { id: 3, title: 'Lab Safety Quiz', module: 'LAB101', due: '2024-12-10', status: 'submitted', priority: 'low' },
+        { id: '1', title: 'Thermodynamics Lab 1', module: 'MECH201', due: 'Tomorrow', status: 'draft', priority: 'high' },
+        { id: '2', title: 'Engineering Ethics Essay', module: 'ETH101', due: '2025-01-15', status: 'pending', priority: 'medium' },
+        { id: '3', title: 'Lab Safety Quiz', module: 'LAB101', due: '2024-12-10', status: 'submitted', priority: 'low' },
     ];
 
     return (
@@ -71,8 +73,10 @@ export default function AssignmentsPage() {
                             <h3 className="font-bold text-lg mb-2">{assign.title}</h3>
                             <p className="text-sm text-gray-500 mb-6">Submit your work before the deadline to avoid penalties.</p>
 
-                            <Button className="w-full" variant={assign.status === 'submitted' ? 'secondary' : 'default'} disabled={assign.status === 'submitted'}>
-                                {assign.status === 'submitted' ? 'View Submission' : 'Submit Assignment'}
+                            <Button className="w-full" variant={assign.status === 'submitted' ? 'secondary' : 'default'} asChild>
+                                <Link href={`/dashboard/student/assignments/${assign.id}`}>
+                                    {assign.status === 'submitted' ? 'View Submission' : 'Submit Assignment'}
+                                </Link>
                             </Button>
                         </div>
                     ))}

@@ -8,12 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Star, LogOut, Lock, CreditCard, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function GroupsPage() {
     const [activeTab, setActiveTab] = useState("explore");
     const [available, setAvailable] = useState<any[]>([]);
     const [myGroups, setMyGroups] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [leavingGroupId, setLeavingGroupId] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
@@ -65,8 +74,35 @@ export default function GroupsPage() {
         }
     }
 
+    async function confirmLeave() {
+        if (!leavingGroupId) return;
+
+        const res = await leaveGroup(leavingGroupId);
+        if (res.error) {
+            toast.error(res.error);
+        } else {
+            toast.success("Left group");
+            loadData();
+        }
+        setLeavingGroupId(null);
+    }
+
     return (
         <div className="min-h-screen bg-gray-50/50 p-6 md:p-10">
+            <Dialog open={!!leavingGroupId} onOpenChange={(open) => !open && setLeavingGroupId(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Leave Group?</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to leave this group? You will lose access to the workspace and resources.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setLeavingGroupId(null)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmLeave}>Yes, Leave</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <div className="max-w-7xl mx-auto space-y-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Student Groups</h1>
@@ -99,6 +135,12 @@ export default function GroupsPage() {
                                     )}
                                     <h3 className="font-bold text-lg">{group.name}</h3>
                                     <div className="text-xs text-indigo-600 font-medium capitalize mb-2">{group.type.replace('_', ' ')}</div>
+                                    {group.current_project && (
+                                        <div className="text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded w-fit mb-2 flex items-center gap-1">
+                                            <Sparkles className="h-3 w-3" />
+                                            {group.current_project}
+                                        </div>
+                                    )}
                                     <p className="text-sm text-gray-500 mb-4 line-clamp-2">{group.description}</p>
 
                                     <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
@@ -131,6 +173,12 @@ export default function GroupsPage() {
                                             <div>
                                                 <h3 className="font-bold text-xl">{membership.group.name}</h3>
                                                 <div className="text-sm text-gray-500">{membership.group.description}</div>
+                                                {membership.group.current_project && (
+                                                    <div className="text-xs text-emerald-700 font-medium mt-1 flex items-center gap-1">
+                                                        <Sparkles className="h-3 w-3" />
+                                                        Active: {membership.group.current_project}
+                                                    </div>
+                                                )}
                                             </div>
                                             {membership.membership_status === 'paid' ? (
                                                 <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 border-0"><Star className="h-3 w-3 mr-1 fill-white" /> PRO Member</Badge>
@@ -151,10 +199,10 @@ export default function GroupsPage() {
                                                     Upgrade (R{membership.group.fee_amount})
                                                 </Button>
                                             )}
-                                            <Button size="sm" variant="outline">
-                                                Access Hub
+                                            <Button size="sm" variant="outline" asChild>
+                                                <a href={`/dashboard/student/groups/${membership.group_id}`}>Access Hub</a>
                                             </Button>
-                                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-auto" onClick={() => handleLeave(membership.group_id)}>
+                                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-auto" onClick={() => setLeavingGroupId(membership.group_id)}>
                                                 <LogOut className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -179,6 +227,6 @@ export default function GroupsPage() {
                     </TabsContent>
                 </Tabs>
             </div>
-        </div>
+        </div >
     );
 }

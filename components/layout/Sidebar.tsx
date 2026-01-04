@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Calendar, BookOpen, MessageSquare, Settings, LogOut, Trello, LayoutGrid, Users, QrCode, Megaphone, FlaskConical, GraduationCap, Library, ChevronLeft, ChevronRight, Clock, Building } from 'lucide-react';
+import { Home, Calendar, BookOpen, MessageSquare, Settings, LogOut, Trello, LayoutGrid, Users, QrCode, Megaphone, FlaskConical, GraduationCap, Library, ChevronLeft, ChevronRight, Clock, Building, Brain, Menu } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useState } from 'react';
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const navigation = [
   // Student Views
@@ -15,7 +16,7 @@ const navigation = [
   { icon: GraduationCap, label: 'Transcript', href: '/dashboard/student/transcript', roles: ['student'] },
   { icon: Library, label: 'Academic Hub', href: '/dashboard/student/academic-hub', roles: ['student'] },
   { icon: MessageSquare, label: 'Forums', href: '/dashboard/student/forums', roles: ['student'] },
-  { icon: Trello, label: 'Project Hub', href: '/dashboard/student/design', roles: ['student'] },
+  { icon: Brain, label: 'AI Center', href: '/dashboard/student/ai-center', roles: ['student'] },
   { icon: QrCode, label: 'Attendance', href: '/dashboard/student/attendance', roles: ['student'] },
   { icon: FlaskConical, label: 'Lab Booking', href: '/dashboard/student/labs', roles: ['student'] },
   { icon: Users, label: 'Groups', href: '/dashboard/student/groups', roles: ['student'] },
@@ -65,18 +66,24 @@ export default function Sidebar({ className }: { className?: string }) {
     role && item.roles.includes(role)
   );
 
-  return (
-    <div className={cn("flex h-full flex-col bg-black text-white border-r border-gray-800 transition-all duration-300", isCollapsed ? "w-20" : "w-64", className)}>
-      <div className="flex h-16 items-center justify-between px-4 border-b border-gray-800">
-        {!isCollapsed && <h1 className="text-xl font-bold tracking-wider truncate">UBES</h1>}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 hover:bg-gray-800 rounded-lg transition-colors ml-auto"
-        >
-          {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+  const MobileNav = () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <button className="p-2 md:hidden absolute top-4 left-4 z-50 bg-black text-white rounded-md">
+          <Menu className="h-6 w-6" />
         </button>
-      </div>
+      </SheetTrigger>
+      <SheetContent side="left" className="p-0 bg-black text-white border-r border-gray-800 w-64">
+        <SheetHeader className="p-4 border-b border-gray-800">
+          <SheetTitle className="text-xl font-bold tracking-wider text-left text-white">UBES</SheetTitle>
+        </SheetHeader>
+        <NavContent />
+      </SheetContent>
+    </Sheet>
+  );
 
+  const NavContent = () => (
+    <>
       <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto overflow-x-hidden scrollbar-hide">
         {filteredNavigation.map((item) => {
           const isActive = pathname === item.href;
@@ -126,6 +133,25 @@ export default function Sidebar({ className }: { className?: string }) {
           </button>
         </form>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      <MobileNav />
+      {/* Desktop Sidebar */}
+      <div className={cn("hidden md:flex h-full flex-col bg-black text-white border-r border-gray-800 transition-all duration-300", isCollapsed ? "w-20" : "w-64", className)}>
+        <div className="flex h-16 items-center justify-between px-4 border-b border-gray-800">
+          {!isCollapsed && <h1 className="text-xl font-bold tracking-wider truncate">UBES</h1>}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 hover:bg-gray-800 rounded-lg transition-colors ml-auto"
+          >
+            {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </button>
+        </div>
+        <NavContent />
+      </div>
+    </>
   );
 }

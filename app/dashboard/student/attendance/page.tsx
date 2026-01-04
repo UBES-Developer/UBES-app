@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MapPin, QrCode, AlertCircle, CheckCircle, Clock } from "lucide-react"; // Icons
 import { toast } from "sonner";
+import { ManualAttendanceDialog } from "@/components/academic/ManualAttendanceDialog";
 
 export default function AttendancePage() {
     const [history, setHistory] = useState<any[]>([]);
@@ -125,9 +126,12 @@ export default function AttendancePage() {
                     <div className="space-y-6">
                         {/* Check In Panel */}
                         <Card className="border-indigo-100 bg-indigo-50/50">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5 text-indigo-600" /> Self Check-In</CardTitle>
-                                <CardDescription>Verify your presence for active classes.</CardDescription>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <div className="space-y-1">
+                                    <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5 text-indigo-600" /> Self Check-In</CardTitle>
+                                    <CardDescription>Verify your presence for active classes.</CardDescription>
+                                </div>
+                                <ManualAttendanceDialog />
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {activeSessions.length === 0 ? (

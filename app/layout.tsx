@@ -16,6 +16,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "UBES Portal",
   description: "Unified Engineering Student Portal",
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icons/icon-192x192.png',
+  },
+};
+
+export const viewport = {
+  themeColor: "#4f46e5",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Prevent zoom on mobile for app-like feel
 };
 
 export default function RootLayout({

@@ -1,13 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Code, Book, Users, ExternalLink, ArrowRight } from "lucide-react";
+import { Clock, Code, Book, Users, ExternalLink, ArrowRight, Brain, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { getUpcomingAssignments, getPriorityAssignments } from "@/app/actions/assignments";
 import BroadcastBanner from "@/components/dashboard/BroadcastBanner";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { ConsultationRequestDialog } from "./ConsultationRequestDialog";
+import { ToolboxDialog } from "@/components/toolbox/ToolboxDialog";
 
 export default async function StudentDashboard() {
     const nextUp = await getUpcomingAssignments();
@@ -18,6 +19,13 @@ export default async function StudentDashboard() {
     const supabase = createClient(cookieStore);
     const { data: { user } } = await supabase.auth.getUser();
     const name = user?.user_metadata?.username || user?.user_metadata?.full_name || 'Engineer';
+
+    // Fetch active groups for dashboard
+    const { data: myGroups } = await supabase
+        .from('group_members')
+        .select('*, group:student_groups(*)')
+        .eq('user_id', user?.id)
+        .limit(2);
 
     const topTask = nextUp.length > 0 ? nextUp[0] : null;
 
@@ -66,7 +74,9 @@ export default async function StudentDashboard() {
                                     <Badge variant="outline" className="border-indigo-200 text-indigo-700 bg-indigo-50">Priority: High</Badge>
                                     <Badge variant="secondary">{topTask.module}</Badge>
                                 </div>
-                                <Button className="w-full max-w-xs bg-indigo-600 hover:bg-indigo-700">Start Working</Button>
+                                <Button className="w-full max-w-xs bg-indigo-600 hover:bg-indigo-700" asChild>
+                                    <Link href={`/dashboard/student/assignments/${topTask.id}`}>Start Working</Link>
+                                </Button>
                                 <p className="text-xs text-slate-400 mt-2">AI Suggestion: "Based on difficulty {topTask.difficulty_score}/10, start now."</p>
                             </>
                         ) : (
@@ -79,20 +89,23 @@ export default async function StudentDashboard() {
                 </Card>
 
                 {/* 2. Engineering Toolbox (1x1) */}
-                <Card className="col-span-1 shadow-sm border-slate-200">
+                <Card className="col-span-1 shadow-sm border-slate-200 flex flex-col">
                     <CardHeader className="pb-2">
                         <CardTitle className="flex items-center text-base">
                             <Code className="h-4 w-4 mr-2 text-slate-500" />
                             Toolbox
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                        <Button variant="outline" className="w-full justify-between font-normal h-auto py-3">
-                            <span className="flex items-center"><ExternalLink className="h-3 w-3 mr-2" /> GitHub</span>
-                        </Button>
-                        <Button variant="outline" className="w-full justify-between font-normal h-auto py-3">
-                            <span className="flex items-center"><ExternalLink className="h-3 w-3 mr-2" /> MATLAB Online</span>
-                        </Button>
+                    <CardContent className="flex-1 flex flex-col justify-center space-y-3">
+                        <div className="text-center space-y-1 mb-2">
+                            <div className="text-2xl font-bold text-slate-900">15+</div>
+                            <p className="text-xs text-slate-500">Apps & Resources</p>
+                        </div>
+                        <ToolboxDialog>
+                            <Button variant="outline" className="w-full border-dashed border-slate-300 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600">
+                                Open Toolkit <ExternalLink className="h-3 w-3 ml-2" />
+                            </Button>
+                        </ToolboxDialog>
                     </CardContent>
                 </Card>
 
@@ -118,26 +131,89 @@ export default async function StudentDashboard() {
                     </CardContent>
                 </Card>
 
-                {/* 4. Project Hub (1x1) */}
-                <Card className="col-span-1 shadow-sm border-slate-200">
+                {/* 4. AI Toolkit (1x1) */}
+                <Card className="col-span-1 shadow-sm border-slate-200 hover:shadow-md transition-shadow">
                     <CardHeader className="pb-2">
                         <CardTitle className="flex items-center text-base">
-                            <Users className="h-4 w-4 mr-2 text-slate-500" />
-                            Project Hub
+                            <Brain className="h-4 w-4 mr-2 text-indigo-500" />
+                            AI Toolkit
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="mb-4">
-                            <div className="text-2xl font-bold">3</div>
-                            <p className="text-xs text-slate-500">Active Tasks</p>
+                            <div className="text-2xl font-bold text-slate-900">12</div>
+                            <p className="text-xs text-slate-500">Models & Agents</p>
                         </div>
-                        <Button variant="secondary" className="w-full text-xs" asChild>
-                            <Link href="/dashboard/student/design">Open Kanban <ArrowRight className="h-3 w-3 ml-1" /></Link>
+                        <Button className="w-full text-xs bg-slate-900 hover:bg-slate-800 text-white" asChild>
+                            <Link href="/dashboard/student/ai-center">
+                                Open AI Center <Sparkles className="h-3 w-3 ml-1 text-yellow-300" />
+                            </Link>
                         </Button>
                     </CardContent>
                 </Card>
 
+                {/* 5. My Groups (Active Workspace) */}
+                <Card className="col-span-1 md:col-span-2 shadow-sm border-slate-200">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center text-base">
+                            <Users className="h-4 w-4 mr-2 text-indigo-500" />
+                            Active Squads
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {myGroups && myGroups.length > 0 ? (
+                                myGroups.map((membership: any) => (
+                                    <div key={membership.group_id} className="flex items-start justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-100 hover:bg-indigo-100/50 transition-colors cursor-pointer group relative">
+                                        <Link href={`/dashboard/student/groups/${membership.group_id}`} className="absolute inset-0" />
+                                        <div className="flex gap-3">
+                                            <div className="h-10 w-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0 overflow-hidden">
+                                                {membership.group.image_url ? (
+                                                    <img src={membership.group.image_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Users className="h-5 w-5" />
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-slate-900 group-hover:text-indigo-700">{membership.group.name}</h4>
+                                                <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                                                    {membership.group.current_project ? (
+                                                        <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                                            <Sparkles className="h-3 w-3" />
+                                                            Project: {membership.group.current_project}
+                                                        </span>
+                                                    ) : (
+                                                        <span>General Member</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 z-10" asChild>
+                                            <Link href={`/dashboard/student/groups/${membership.group_id}`}>Open Workspace</Link>
+                                        </Button>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-6">
+                                    <p className="text-sm text-slate-400 mb-2">No active squads.</p>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href="/dashboard/student/groups">Find a Team</Link>
+                                    </Button>
+                                </div>
+                            )}
+
+                            {myGroups && myGroups.length > 0 && (
+                                <div className="text-center pt-1">
+                                    <Link href="/dashboard/student/groups" className="text-xs text-slate-400 hover:text-indigo-600 flex items-center justify-center gap-1">
+                                        View all groups <ArrowRight className="h-3 w-3" />
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
             </div>
-        </div>
+        </div >
     );
 }
