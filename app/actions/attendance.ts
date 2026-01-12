@@ -38,6 +38,76 @@ export async function getActiveSessions() {
     return { data };
 }
 
+// LECTURER: Start Attendance
+export async function createOTPSession(moduleCode: string) {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Not authenticated" };
+
+    // Generate 4-digit code
+    const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60000).toISOString(); // 10 minutes
+
+    const { data, error } = await supabase
+        .from('attendance_sessions')
+        .insert({
+            lecturer_id: user.id,
+            module_code: moduleCode,
+            otp_code: otpCode,
+            otp_expires_at: expiresAt,
+            is_active: true,
+            start_time: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+    if (error) return { error: error.message };
+    
+    revalidatePath('/dashboard/staff/attendance');
+    return { success: true, code: otpCode, expiresAt };
+}
+
+// STUDENT: Enter Code
+export async function submitOTP(code: string) {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Not authenticated" };
+
+    // 1. Find Session
+    const { data: session, error: sessionError } = await supabase
+        .from('attendance_sessions')
+        .select('id, module_code')
+        .eq('otp_code', code)
+        .gt('otp_expires_at', new Date().toISOString()) // Must be valid
+        .single();
+
+    if (sessionError || !session) {
+        return { error: "Invalid or expired code." };
+    }
+
+    // 2. Mark Present
+    const { error: scanError } = await supabase
+        .from('attendance_scans')
+        .insert({
+            session_id: session.id,
+            student_id: user.id,
+            status: 'present',
+            scanned_at: new Date().toISOString()
+        });
+
+    if (scanError) {
+        if (scanError.code === '23505') return { error: "You have already checked in for this session." };
+        return { error: scanError.message };
+    }
+
+    revalidatePath('/dashboard/student/attendance');
+    return { success: true, module: session.module_code };
+}
+
 export async function selfCheckIn(sessionId: string, lat?: number, lng?: number) {
     const supabase = createClient(await cookies());
     const { data: { user } } = await supabase.auth.getUser();

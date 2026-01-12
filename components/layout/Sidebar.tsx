@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Home, Calendar, BookOpen, MessageSquare, Settings, LogOut, Trello, LayoutGrid, Users, QrCode, Megaphone, FlaskConical, GraduationCap, Library, ChevronLeft, ChevronRight, Clock, Building, Brain, Menu } from 'lucide-react';
 import { signOut } from '@/app/actions/auth';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -41,13 +41,29 @@ const navigation = [
   { icon: QrCode, label: 'Smart Attendance', href: '/dashboard/staff/attendance', roles: ['lecturer', 'staff'] },
   { icon: BookOpen, label: 'Grading Stack', href: '/dashboard/staff/grading', roles: ['lecturer', 'staff'] },
 
-  { icon: Settings, label: 'Settings', href: '/settings', roles: ['student', 'lecturer', 'staff', 'admin'] },
+  { icon: Settings, label: 'Settings', href: '/dashboard/settings', roles: ['student', 'lecturer', 'staff', 'admin'] },
 ];
 
 export default function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { role, loading } = useUserRole();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Persistence
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem('sidebarCollapsed');
+    if (saved) setIsCollapsed(saved === 'true');
+  }, []);
+
+  const toggleSidebar = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', String(newState));
+  };
+
+  if (!mounted) return null; // Avoid hydration mismatch
 
   if (loading) {
     return (
@@ -141,10 +157,15 @@ export default function Sidebar({ className }: { className?: string }) {
       <MobileNav />
       {/* Desktop Sidebar */}
       <div className={cn("hidden md:flex h-full flex-col bg-black text-white border-r border-gray-800 transition-all duration-300", isCollapsed ? "w-20" : "w-64", className)}>
-        <div className="flex h-16 items-center justify-between px-4 border-b border-gray-800">
-          {!isCollapsed && <h1 className="text-xl font-bold tracking-wider truncate">UBES</h1>}
+        <div className={cn("flex h-16 items-center px-4 border-b border-gray-800", isCollapsed ? "justify-center" : "justify-between")}>
+          {!isCollapsed ? (
+             <h1 className="text-xl font-bold tracking-wider truncate">UBES</h1>
+          ) : (
+             <h1 className="text-xl font-bold tracking-wider mr-2">U</h1>
+          )}
+          
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={toggleSidebar}
             className="p-1 hover:bg-gray-800 rounded-lg transition-colors ml-auto"
           >
             {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}

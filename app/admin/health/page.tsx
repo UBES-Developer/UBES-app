@@ -1,16 +1,29 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getSystemHealth, getDatabaseStats, getRecentErrors } from "@/app/actions/health";
-import { BentoCard, BentoGrid, BentoStat } from "@/components/bento/BentoCard";
+import { getSystemHealth, getRealtimeMetrics, getRecentActivity } from "@/app/actions/health";
+import { BentoCard, BentoGrid } from "@/components/bento/BentoCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Activity, Database, Shield, AlertTriangle, CheckCircle, Clock, RefreshCw, TrendingUp } from "lucide-react";
+import { 
+    Activity, 
+    Database, 
+    Shield, 
+    AlertTriangle, 
+    CheckCircle, 
+    Clock, 
+    RefreshCw, 
+    Users, 
+    HardDrive, 
+    ServerCrash 
+} from "lucide-react";
+import { Sparkline } from "@/components/admin/health/Sparkline";
+import { ActivityFeed } from "@/components/admin/health/ActivityFeed";
 
 export default function HealthMonitorPage() {
     const [health, setHealth] = useState<any>(null);
-    const [stats, setStats] = useState<any>(null);
-    const [errors, setErrors] = useState<any>(null);
+    const [metrics, setMetrics] = useState<any>(null);
+    const [activity, setActivity] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [lastCheck, setLastCheck] = useState<Date | null>(null);
 
@@ -23,15 +36,15 @@ export default function HealthMonitorPage() {
     async function loadHealthData() {
         setLoading(true);
         try {
-            const [healthData, statsData, errorsData] = await Promise.all([
+            const [healthData, metricsData, activityData] = await Promise.all([
                 getSystemHealth(),
-                getDatabaseStats(),
-                getRecentErrors()
+                getRealtimeMetrics(),
+                getRecentActivity()
             ]);
 
             setHealth(healthData);
-            setStats(statsData);
-            setErrors(errorsData);
+            setMetrics(metricsData);
+            setActivity(activityData);
             setLastCheck(new Date());
         } catch (error) {
             console.error('Failed to load health data:', error);
@@ -39,160 +52,168 @@ export default function HealthMonitorPage() {
         setLoading(false);
     }
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'healthy': return 'bg-green-500/20 text-green-700 border-green-300';
-            case 'degraded': return 'bg-yellow-500/20 text-yellow-700 border-yellow-300';
-            case 'down': return 'bg-red-500/20 text-red-700 border-red-300';
-            default: return 'bg-gray-500/20 text-gray-700 border-gray-300';
-        }
+    const getLatencyColor = (ms: number) => {
+        if (ms < 200) return "text-green-600";
+        if (ms < 1000) return "text-yellow-600";
+        return "text-red-600";
+    };
+
+    const getStatusBadge = (status: string) => {
+        const styles = {
+            healthy: "bg-green-100 text-green-700 border-green-200",
+            degraded: "bg-yellow-100 text-yellow-700 border-yellow-200",
+            down: "bg-red-100 text-red-700 border-red-200"
+        };
+        return (
+            <Badge variant="outline" className={styles[status as keyof typeof styles] || styles.healthy}>
+                {status.toUpperCase()}
+            </Badge>
+        );
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 p-6">
-            <div className="space-y-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+            <div className="space-y-6 max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
                             System Health
                         </h1>
-                        <p className="text-gray-600 mt-2">Real-time monitoring of all integrations and services</p>
+                        <p className="text-slate-500 mt-1">Real-time infrastructure monitoring</p>
                     </div>
-                    <div className="text-right space-y-2">
-                        <Button onClick={loadHealthData} disabled={loading} className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white">
-                            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    <div className="text-right flex items-center gap-4">
+                        {lastCheck && (
+                            <span className="text-xs text-slate-400 font-mono">
+                                Updated: {lastCheck.toLocaleTimeString()}
+                            </span>
+                        )}
+                        <Button 
+                            onClick={loadHealthData} 
+                            disabled={loading} 
+                            size="sm"
+                            variant="outline"
+                            className="bg-white"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 mr-2 ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
-                        {lastCheck && (
-                            <p className="text-xs text-gray-600">
-                                Last: {lastCheck.toLocaleTimeString()}
-                            </p>
-                        )}
                     </div>
                 </div>
 
-                {/* Bento Grid */}
-                <BentoGrid className="grid-cols-1 md:grid-cols-4 auto-rows-[minmax(180px,auto)]">
-
-                    {/* Overall Status - Large Card */}
+                {/* Main Grid */}
+                <BentoGrid className="grid-cols-1 md:grid-cols-3 gap-4 auto-rows-min">
+                    
+                    {/* 1. Database Health */}
                     {health && (
-                        <BentoCard
-                            variant={health.overall === 'healthy' ? 'gradient' : 'glass'}
-                            className={`md:col-span-2 ${health.overall === 'healthy' ? 'bg-gradient-to-br from-green-400/20 to-emerald-400/20' : ''}`}
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className={`p-4 rounded-3xl ${health.overall === 'healthy' ? 'bg-green-500/20' :
-                                        health.overall === 'degraded' ? 'bg-yellow-500/20' :
-                                            'bg-red-500/20'
-                                    }`}>
-                                    {health.overall === 'healthy' ? (
-                                        <CheckCircle className="h-12 w-12 text-green-600" />
-                                    ) : (
-                                        <AlertTriangle className="h-12 w-12 text-yellow-600" />
-                                    )}
+                        <BentoCard variant="glass" className="relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-50">
+                                <Database className="w-16 h-16 text-slate-100" />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="p-2 bg-blue-50 rounded-lg">
+                                        <Database className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    {getStatusBadge(health.database.status)}
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-1">System Status</h3>
-                                    <Badge className={getStatusColor(health.overall)}>
-                                        {health.overall.toUpperCase()}
-                                    </Badge>
-                                    <p className="text-xs text-gray-600 mt-2">All services operational</p>
+                                <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider">Database Latency</h3>
+                                <div className="flex items-end gap-2 mt-1">
+                                    <span className={`text-3xl font-bold ${getLatencyColor(health.database.responseTime)}`}>
+                                        {health.database.responseTime}
+                                        <span className="text-base font-normal text-slate-400 ml-1">ms</span>
+                                    </span>
+                                </div>
+                                <div className="mt-4 h-10 w-full">
+                                    <Sparkline 
+                                        data={health.database.latencyHistory || []} 
+                                        color={health.database.responseTime < 200 ? "#16a34a" : "#ca8a04"} 
+                                    />
                                 </div>
                             </div>
                         </BentoCard>
                     )}
 
-                    {/* Database Health */}
+                    {/* 2. Auth Health */}
                     {health && (
-                        <BentoCard variant="glass" className="hover:scale-105">
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-3 bg-blue-500/20 rounded-2xl">
-                                        <Database className="h-5 w-5 text-blue-600" />
+                        <BentoCard variant="glass" className="relative overflow-hidden">
+                             <div className="absolute top-0 right-0 p-4 opacity-50">
+                                <Shield className="w-16 h-16 text-slate-100" />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="p-2 bg-purple-50 rounded-lg">
+                                        <Shield className="w-5 h-5 text-purple-600" />
                                     </div>
-                                    <span className="font-semibold text-gray-900">Database</span>
+                                    {getStatusBadge(health.auth.status)}
                                 </div>
-                                <div>
-                                    <Badge className={getStatusColor(health.database.status)}>
-                                        {health.database.status}
-                                    </Badge>
-                                    <div className="mt-2 text-sm text-gray-600 flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        {health.database.responseTime}ms
-                                    </div>
+                                <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider">Auth Latency</h3>
+                                <div className="flex items-end gap-2 mt-1">
+                                    <span className={`text-3xl font-bold ${getLatencyColor(health.auth.responseTime)}`}>
+                                        {health.auth.responseTime}
+                                        <span className="text-base font-normal text-slate-400 ml-1">ms</span>
+                                    </span>
+                                </div>
+                                <div className="mt-4 h-10 w-full">
+                                    <Sparkline 
+                                        data={health.auth.latencyHistory || []} 
+                                        color={health.auth.responseTime < 200 ? "#9333ea" : "#ca8a04"} 
+                                    />
                                 </div>
                             </div>
                         </BentoCard>
                     )}
 
-                    {/* Auth Service */}
-                    {health && (
-                        <BentoCard variant="glass" className="hover:scale-105">
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-3 bg-purple-500/20 rounded-2xl">
-                                        <Shield className="h-5 w-5 text-purple-600" />
-                                    </div>
-                                    <span className="font-semibold text-gray-900">Authentication</span>
-                                </div>
-                                <div>
-                                    <Badge className={getStatusColor(health.auth.status)}>
-                                        {health.auth.status}
-                                    </Badge>
-                                    <div className="mt-2 text-sm text-gray-600 flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        {health.auth.responseTime}ms
-                                    </div>
-                                </div>
+                    {/* 3. Real-time Metrics Column */}
+                    <div className="grid grid-cols-1 gap-4">
+                        {/* Active Users */}
+                        <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                            <div>
+                                <p className="text-xs text-slate-500 uppercase font-semibold">Online Now</p>
+                                <p className="text-2xl font-bold text-slate-900 mt-1">
+                                    {metrics?.activeUsers || 0}
+                                </p>
                             </div>
-                        </BentoCard>
-                    )}
+                            <div className="p-2 bg-green-50 rounded-full">
+                                <Users className="w-5 h-5 text-green-600" />
+                            </div>
+                        </div>
 
-                    {/* Database Statistics - Large Dark Card */}
-                    {stats && (
-                        <BentoCard variant="dark" className="md:col-span-2 md:row-span-2">
-                            <div className="h-full flex flex-col">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <TrendingUp className="h-5 w-5 text-green-400" />
-                                    <h3 className="font-semibold text-lg">Database Metrics</h3>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 flex-1">
-                                    {Object.entries(stats).map(([table, count]: [string, any]) => (
-                                        <div key={table} className="p-4 bg-white/10 rounded-2xl hover:bg-white/20 transition-colors">
-                                            <div className="text-3xl font-bold text-green-400">{count}</div>
-                                            <div className="text-xs text-gray-400 capitalize mt-1">{table.replace(/_/g, ' ')}</div>
-                                        </div>
-                                    ))}
-                                </div>
+                        {/* Storage */}
+                        <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                            <div>
+                                <p className="text-xs text-slate-500 uppercase font-semibold">Storage</p>
+                                <p className="text-xl font-bold text-slate-900 mt-1">
+                                    {metrics?.storage.used} <span className="text-xs text-slate-400 font-normal">/ {metrics?.storage.limit}</span>
+                                </p>
                             </div>
-                        </BentoCard>
-                    )}
+                            <div className="p-2 bg-slate-100 rounded-full">
+                                <HardDrive className="w-5 h-5 text-slate-600" />
+                            </div>
+                        </div>
 
-                    {/* Recent Errors */}
-                    {errors && errors.count > 0 && (
-                        <BentoCard variant="glass" className="md:col-span-2 bg-gradient-to-br from-red-400/10 to-orange-400/10">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="p-3 bg-red-500/20 rounded-2xl">
-                                    <AlertTriangle className="h-5 w-5 text-red-600" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg text-gray-900">Security Alerts</h3>
-                                    <p className="text-xs text-gray-600">{errors.count} failed login attempts (24h)</p>
-                                </div>
+                         {/* Error Rate */}
+                         <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                            <div>
+                                <p className="text-xs text-slate-500 uppercase font-semibold">Error Rate (24h)</p>
+                                <p className={`text-2xl font-bold mt-1 ${Number(metrics?.errorRate) > 0 ? "text-red-600" : "text-slate-900"}`}>
+                                    {metrics?.errorRate}%
+                                </p>
                             </div>
-                            <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {errors.data.slice(0, 3).map((error: any) => (
-                                    <div key={error.id} className="p-2 bg-white/60 rounded-xl text-xs">
-                                        <div className="flex justify-between">
-                                            <span className="font-medium text-red-900">{error.details?.email || 'Unknown'}</span>
-                                            <span className="text-red-600">{new Date(error.created_at).toLocaleTimeString()}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className={`p-2 rounded-full ${Number(metrics?.errorRate) > 0 ? "bg-red-50" : "bg-slate-100"}`}>
+                                <ServerCrash className={`w-5 h-5 ${Number(metrics?.errorRate) > 0 ? "text-red-600" : "text-slate-600"}`} />
                             </div>
-                        </BentoCard>
-                    )}
+                        </div>
+                    </div>
+
+                    {/* 4. Unified Activity Feed - Spans Full Width */}
+                    <BentoCard variant="glass" className="md:col-span-3">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Activity className="w-5 h-5 text-slate-500" />
+                            <h3 className="font-semibold text-lg text-slate-900">Recent Activity Feed</h3>
+                        </div>
+                        <ActivityFeed items={activity} />
+                    </BentoCard>
 
                 </BentoGrid>
             </div>

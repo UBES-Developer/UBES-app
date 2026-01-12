@@ -1,22 +1,40 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { headers, cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { logAudit } from "@/lib/audit";
+
+
+// Helper to determine the correct domain for redirects
+const getURL = () => {
+    let url =
+        process.env.NEXT_PUBLIC_SITE_URL ?? // Set this to your canonical URL in production
+        process.env.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel
+        'http://localhost:3000/';
+
+    // Ensure URL has the protocol
+    url = url.includes('http') ? url : `https://${url}`;
+    // Ensure URL has no trailing slash to avoid double slashes when appending paths
+    url = url.charAt(url.length - 1) === '/' ? url.slice(0, -1) : url;
+    return url;
+};
 
 export async function forgotPassword(formData: FormData) {
     const email = formData.get('email') as string;
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
-    const origin = (await headers()).get('origin');
+    
+    // Domain Strategy: Use the calculated canonical URL
+    const siteUrl = getURL();
 
     if (!email) {
         return { error: "Email is required" };
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/auth/callback?next=/auth/reset-password`,
+        // Redirects to: https://your-site.com/auth/callback?next=/auth/reset-password
+        redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
     });
 
     if (error) {
@@ -85,7 +103,9 @@ export async function signup(formData: FormData) {
     const role = formData.get('role') as string || 'student'; // Default to student if not provided
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
-    const origin = (await headers()).get('origin');
+    
+    // Domain Strategy: Use the calculated canonical URL
+    const siteUrl = getURL();
 
     if (!username || username.length < 3) {
         return { error: "Username must be at least 3 characters" };
@@ -95,7 +115,8 @@ export async function signup(formData: FormData) {
         email,
         password,
         options: {
-            emailRedirectTo: `${origin}/auth/callback`,
+            // Redirects to: https://your-site.com/auth/callback
+            emailRedirectTo: `${siteUrl}/auth/callback`,
             data: {
                 username,
                 student_id: student_id || null,

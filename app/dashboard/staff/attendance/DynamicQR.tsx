@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 
-export function DynamicQR({ sessionId, courseName }: { sessionId: string, courseName: string }) {
+export function DynamicQR({ sessionId, courseName, otpCode }: { sessionId: string, courseName: string, otpCode?: string }) {
     const [qrUrl, setQrUrl] = useState('');
     const [countdown, setCountdown] = useState(7);
     const [token, setToken] = useState('');
@@ -40,12 +40,21 @@ export function DynamicQR({ sessionId, courseName }: { sessionId: string, course
     };
 
     return (
-        <div className="flex flex-col items-center space-y-6">
+        <div className="flex flex-col items-center space-y-8">
+            {otpCode && (
+                <div className="flex flex-col items-center animate-in zoom-in duration-500">
+                    <span className="text-slate-400 text-sm tracking-widest uppercase font-semibold">One-Time Code</span>
+                    <div className="text-[120px] leading-none font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 font-mono tracking-tighter drop-shadow-2xl">
+                        {otpCode}
+                    </div>
+                </div>
+            )}
+            
             <Card className="w-full max-w-md bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] rounded-xl overflow-hidden">
                 <CardContent className="p-8 flex flex-col items-center">
                     <div className="mb-6 text-center">
                         <h3 className="text-2xl font-bold text-slate-900">{courseName}</h3>
-                        <p className="text-slate-500">Scan to mark attendance</p>
+                        <p className="text-slate-500">Scan or enter code to attend</p>
                     </div>
 
                     <div className="relative w-64 h-64 bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center mb-6">

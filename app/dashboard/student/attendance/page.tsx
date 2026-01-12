@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getAttendanceHistory, getActiveSessions, selfCheckIn, submitDispute } from "@/app/actions/attendance";
+import { getAttendanceHistory, getActiveSessions, submitOTP, submitDispute } from "@/app/actions/attendance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,13 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MapPin, QrCode, AlertCircle, CheckCircle, Clock } from "lucide-react"; // Icons
 import { toast } from "sonner";
-import { ManualAttendanceDialog } from "@/components/academic/ManualAttendanceDialog";
 
 export default function AttendancePage() {
     const [history, setHistory] = useState<any[]>([]);
     const [activeSessions, setActiveSessions] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [checkingIn, setCheckingIn] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false); // Changed default to false to avoid button disabled on mount
+    const [otpCode, setOtpCode] = useState("");
 
     // Dispute State
     const [disputeSessionId, setDisputeSessionId] = useState<string | null>(null);
@@ -29,44 +28,29 @@ export default function AttendancePage() {
     }, []);
 
     async function loadData() {
-        setLoading(true);
         const [histRes, activeRes] = await Promise.all([
             getAttendanceHistory(),
             getActiveSessions()
         ]);
         if (histRes.data) setHistory(histRes.data);
         if (activeRes.data) setActiveSessions(activeRes.data);
-        setLoading(false);
     }
 
-    async function handleCheckIn(sessionId: string) {
-        setCheckingIn(sessionId);
+    async function handleSubmitCode() {
+        if (otpCode.length < 4) return;
+        setLoading(true);
 
-        if (!navigator.geolocation) {
-            toast.error("Geolocation is not supported by your browser");
-            setCheckingIn(null);
-            return;
+        const res = await submitOTP(otpCode);
+        
+        setLoading(false);
+
+        if (res.error) {
+            toast.error(res.error);
+        } else {
+            toast.success(`Checked in for ${res.module}!`);
+            setOtpCode("");
+            loadData();
         }
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude } = position.coords;
-                // toast.info(`Locating... ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-
-                const res = await selfCheckIn(sessionId, latitude, longitude);
-                if (res.error) {
-                    toast.error(res.error);
-                } else {
-                    toast.success("Checked in successfully!");
-                    loadData();
-                }
-                setCheckingIn(null);
-            },
-            (error) => {
-                toast.error("Unable to retrieve your location. Please allow access.");
-                setCheckingIn(null);
-            }
-        );
     }
 
     async function handleDispute() {
@@ -125,41 +109,34 @@ export default function AttendancePage() {
                     {/* LEFT: Check-In & History */}
                     <div className="space-y-6">
                         {/* Check In Panel */}
+                        {/* OTC Check In Panel */}
                         <Card className="border-indigo-100 bg-indigo-50/50">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <div className="space-y-1">
-                                    <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5 text-indigo-600" /> Self Check-In</CardTitle>
-                                    <CardDescription>Verify your presence for active classes.</CardDescription>
+                                    <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5 text-indigo-600" /> Live Attendance</CardTitle>
+                                    <CardDescription>Enter the 4-digit code provided by your lecturer.</CardDescription>
                                 </div>
-                                <ManualAttendanceDialog />
                             </CardHeader>
-                            <CardContent className="space-y-3">
-                                {activeSessions.length === 0 ? (
-                                    <div className="text-center py-6 text-gray-400 text-sm">No active classes found at this time.</div>
-                                ) : (
-                                    activeSessions.map(session => (
-                                        <div key={session.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm">
-                                            <div>
-                                                <div className="font-bold text-gray-900">{session.module_code}</div>
-                                                <div className="text-xs text-gray-500 flex items-center gap-1">
-                                                    <Clock className="h-3 w-3" />
-                                                    {new Date(session.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                            </div>
-                                            <Button
-                                                onClick={() => handleCheckIn(session.id)}
-                                                disabled={checkingIn === session.id}
-                                                size="sm"
-                                            >
-                                                {checkingIn === session.id ? (
-                                                    "Verifying..."
-                                                ) : (
-                                                    <><MapPin className="h-4 w-4 mr-2" /> Check In</>
-                                                )}
-                                            </Button>
-                                        </div>
-                                    ))
-                                )}
+                            <CardContent className="space-y-4">
+                                <div className="flex gap-2">
+                                    <Input 
+                                        placeholder="0000" 
+                                        className="text-center text-2xl tracking-widest font-mono font-bold uppercase h-14"
+                                        maxLength={4}
+                                        value={otpCode}
+                                        onChange={(e) => setOtpCode(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleSubmitCode();
+                                        }}
+                                    />
+                                </div>
+                                <Button 
+                                    className="w-full h-12 text-lg bg-indigo-600 hover:bg-indigo-700"
+                                    onClick={handleSubmitCode}
+                                    disabled={loading || otpCode.length < 4}
+                                >
+                                    {loading ? "Verifying..." : "Submit Code"}
+                                </Button>
                             </CardContent>
                         </Card>
 

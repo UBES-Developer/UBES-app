@@ -1,6 +1,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { StartAttendanceForm } from "@/components/academic/StartAttendanceForm";
 import { DynamicQR } from "./DynamicQR";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users, Monitor, PlayCircle } from "lucide-react";
@@ -26,11 +27,16 @@ export default async function AttendancePage() {
     if (!session) {
         return (
             <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6">
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-4 max-w-md w-full">
                     <Monitor className="h-16 w-16 text-slate-700 mx-auto" />
-                    <h1 className="text-2xl font-bold text-white">No Active Session</h1>
-                    <p className="text-slate-400">You don't have a live class running right now.</p>
-                    <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
+                    <h1 className="text-2xl font-bold text-white">Attendance Projector</h1>
+                    <p className="text-slate-400">Start a new session to generate an 4-digit One-Time Code.</p>
+                    
+                    <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 mt-6">
+                        <StartAttendanceForm />
+                    </div>
+
+                    <Button variant="link" asChild className="text-slate-500">
                         <Link href="/dashboard/staff">Return to Dashboard</Link>
                     </Button>
                 </div>
@@ -70,7 +76,7 @@ export default async function AttendancePage() {
                 </div>
 
                 {/* Main QR Card */}
-                <DynamicQR sessionId={session.id} courseName={session.module_code} />
+                <DynamicQR sessionId={session.id} courseName={session.module_code} otpCode={session.otp_code} />
 
             </div>
         </div>
